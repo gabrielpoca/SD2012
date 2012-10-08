@@ -1,8 +1,7 @@
 
-package bolsa;
+package stockexchange;
 
-public class Bolsa {
-
+public class StockExchange {
 
     public static void main(String[] args) {
 
