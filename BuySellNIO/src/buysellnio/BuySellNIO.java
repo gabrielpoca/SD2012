@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -113,8 +112,7 @@ public class BuySellNIO {
     }
 
     /**
-     * Starts the server socket channel on a port and configures it.
-     *
+     * Starts and configures the server socket channel on a port.
      * @param port Port to listen too.
      */
     private void startServerSocket(int port) throws IOException {
@@ -188,6 +186,7 @@ public class BuySellNIO {
             Entry seller = null;
             Entry buyer = null;
             switch (socket.getLocalPort()) {
+                /* update the quantity and find a match entry to perform transaction. */
                 case BUY_PORT:
                     buyer = buyersDatabase.get(channel);
                     quantity = buyer.getQuantity() + numReadBytes;
@@ -203,32 +202,22 @@ public class BuySellNIO {
                     buyer = findEntry(buyersDatabase);
                     break;
             }
-
+            /* if there is a match for transaction perform it. */
             if(buyer != null && seller != null) {
                 quantity = updateEntrys(buyer, seller);
-                addToBuffer(buyer.getSocket().getChannel(), new byte[quantity]);
-                addToBuffer(seller.getSocket().getChannel(), new byte[quantity]);
-                key.interestOps(SelectionKey.OP_WRITE);
+                /* if some quantity was traded output it to each channel. */
+                if(quantity != 0) {
+                    addToBuffer(buyer.getSocket().getChannel(), (""+quantity).getBytes());
+                    addToBuffer(seller.getSocket().getChannel(), (""+quantity).getBytes());
+                }
             }
-
-            // if some bytes are read
-            //Entry entry = findEntry(sellersDatabase);
-            //if (entry != null) {
-            //	updateEntrys(entry, buyersDatabase.get(channel));
-            //	validateEntry(entry);
-            //  }
-            //byte[] data = new byte[numRead];
-            //System.arraycopy(buffer.array(), 0, data, 0, numRead);
-
-
-            // write back to client
-            //addToBuffer(key, data);
+            key.interestOps(SelectionKey.OP_WRITE);
         }
     }
 
     /**
      * Performs the transaction between the buyer and the seller and
-     * returns the quantity.
+     * returns the traded quantity.
      * @param buyer
      * @param seller
      * @return The traded quantity.
@@ -243,7 +232,7 @@ public class BuySellNIO {
     }
 
     /**
-     * Selects a entry in the given database.
+     * Selects a random entry in the given database.
      * @param database Database to selec.
      * @return Selected entry.
      */
@@ -259,6 +248,11 @@ public class BuySellNIO {
         return entry;
     }
 
+    /**
+     * Add data to the channel buffer to be sent later.
+     * @param channel
+     * @param data 
+     */
     private void addToBuffer(SocketChannel channel, byte[] data) {
         List<byte[]> pendingData = this.dataMap.get(channel);
         pendingData.add(data);
