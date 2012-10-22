@@ -26,12 +26,19 @@ class Entry {
 
     Socket socket;
     int quantity;
+    SelectionKey key;
 
-    public Entry(Socket sc, int quantity) {
+    public Entry(Socket sc, int quantity, SelectionKey key) {
         this.socket = sc;
         this.quantity = quantity;
+        this.key = key;
     }
 
+    public Entry(Socket socket, SelectionKey key) {
+        this.socket = socket;
+        this.key = key;
+    }
+    
     public Entry(Socket socket) {
         this.socket = socket;
     }
@@ -44,8 +51,16 @@ class Entry {
         return quantity;
     }
 
+    public SelectionKey getKey() {
+        return key;
+    }
+    
     public void setQuantity(int quantity) {
         this.quantity = quantity;
+    }
+    
+    public void setKey(SelectionKey key) {
+        this.key = key;
     }
 
     public int subQuantity(int quantity) {
@@ -136,13 +151,11 @@ public class BuySellNIO {
                 buyersDatabase.put(channel, new Entry(socket));
                 // write welcome message for buyers
                 channel.write(ByteBuffer.wrap("Welcome to stock exchange! You're a buyer!\r\n".getBytes("US-ASCII")));
-                buyersDatabase.put(channel, new Entry(socket));
                 break;
             case SELL_PORT:
                 sellersDatabase.put(channel, new Entry(socket));
                 // write welcome message for sellers
                 channel.write(ByteBuffer.wrap("Welcome to stock exchange You're a seller!\r\n".getBytes("US-ASCII")));
-                sellersDatabase.put(channel, new Entry(socket));
                 break;
         }
         // register next action
@@ -189,6 +202,7 @@ public class BuySellNIO {
                 /* update the quantity and find a match entry to perform transaction. */
                 case BUY_PORT:
                     buyer = buyersDatabase.get(channel);
+                    buyer.setKey(key);
                     quantity = buyer.getQuantity() + numReadBytes;
                     buyer.setQuantity(quantity);
                     log("Got: " + numReadBytes + " bytes from buyer, updated to "+quantity+".");
@@ -196,6 +210,7 @@ public class BuySellNIO {
                     break;
                 case SELL_PORT:
                     seller = sellersDatabase.get(channel);
+                    seller.setKey(key);
                     quantity = seller.getQuantity() + numReadBytes;
                     seller.setQuantity(quantity);
                     log("Got: " + numReadBytes + " bytes from seller, updated to "+quantity+".");
@@ -204,14 +219,16 @@ public class BuySellNIO {
             }
             /* if there is a match for transaction perform it. */
             if(buyer != null && seller != null) {
-                quantity = updateEntrys(buyer, seller);
+                quantity = tradeEntrys(buyer, seller);
                 /* if some quantity was traded output it to each channel. */
                 if(quantity != 0) {
-                    addToBuffer(buyer.getSocket().getChannel(), (""+quantity).getBytes());
-                    addToBuffer(seller.getSocket().getChannel(), (""+quantity).getBytes());
+                    addToChannelBuffer(buyer.getSocket().getChannel(), (""+quantity).getBytes());
+                    addToChannelBuffer(seller.getSocket().getChannel(), (""+quantity).getBytes());
+                    seller.getKey().interestOps(SelectionKey.OP_WRITE);
+                    buyer.getKey().interestOps(SelectionKey.OP_WRITE);
                 }
             }
-            key.interestOps(SelectionKey.OP_WRITE);
+            // set next action
         }
     }
 
@@ -222,10 +239,11 @@ public class BuySellNIO {
      * @param seller
      * @return The traded quantity.
      */
-    private int updateEntrys(Entry buyer, Entry seller) {
+    private int tradeEntrys(Entry buyer, Entry seller) {
         int quantity = buyer.getQuantity();
-        if (seller.getQuantity() < quantity)
+        if (seller.getQuantity() < quantity) {
             quantity = seller.getQuantity();
+        }
         buyer.subQuantity(quantity);
         seller.subQuantity(quantity);
         return quantity;
@@ -241,8 +259,7 @@ public class BuySellNIO {
         if (!database.isEmpty()) {
             for(Entry e : database.values()) {
                 entry = e;
-                if(entry != null)
-                    break;
+                if(entry != null) { break; }
             }
         }
         return entry;
@@ -253,10 +270,9 @@ public class BuySellNIO {
      * @param channel
      * @param data 
      */
-    private void addToBuffer(SocketChannel channel, byte[] data) {
+    private void addToChannelBuffer(SocketChannel channel, byte[] data) {
         List<byte[]> pendingData = this.dataMap.get(channel);
         pendingData.add(data);
-        //key.interestOps(SelectionKey.OP_WRITE);
     }
 
 
