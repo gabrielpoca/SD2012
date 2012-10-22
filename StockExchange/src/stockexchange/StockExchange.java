@@ -52,12 +52,16 @@ public class StockExchange {
     public static void main(String[] args) throws IOException, InterruptedException {
         // Start the database
         Database database = new Database();
-        // Create the servers
+        // Start server
         Server server = new Server(PORT, database);
-        // Run the servers
         Thread threadServer = new Thread(server);
         threadServer.start();
-        // Wait for the server to finish
+        // Start middleman
+        MiddleMan middleman = new MiddleMan(database);
+        Thread thread_middleman = new Thread(middleman);
+        thread_middleman.start();
+        
         threadServer.join();
+        thread_middleman.join();
     }
 }

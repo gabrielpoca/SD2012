@@ -47,27 +47,9 @@ class Agent extends Thread {
                 Entry match_entry = null;
                 // perform action
                 if (action[0].equals(("buy"))) {
-                    match_entry = database.addBuyer(entry);
+                    database.addBuyer(entry);
                 } else if (action[0].equals("sell")) {
-                    match_entry = database.addSeller(entry);
-                }
-                // If a socket was returned close it and the current socket.
-                if (match_entry != null) {
-                    // value to be returned to each
-                    int trade_quantity = entry.getQuantity();
-                    if (match_entry.getQuantity() < trade_quantity) {
-                        trade_quantity = match_entry.getQuantity();
-                    }
-                    // update entries
-                    updateEntry(entry, trade_quantity);
-                    updateEntry(match_entry, trade_quantity);
-                    if (action[0].equals("buy")) {
-                        sendReport(entry, "[Bought] " + trade_quantity);
-                        sendReport(match_entry, "[Sold] " + trade_quantity);
-                    } else {
-                        sendReport(match_entry, "[Bought] " + trade_quantity);
-                        sendReport(entry, "[Sold] " + trade_quantity);
-                    }
+                    database.addSeller(entry);
                 }
             }
         } catch (IOException ex) {
@@ -75,32 +57,6 @@ class Agent extends Thread {
         }
     }
 
-    /**
-     * Updates the entry by the given quantity and calls send report in the
-     * socket with the same quantity.
-     *
-     * @param entry
-     * @param quantity
-     */
-    private void updateEntry(Entry entry, int quantity) {
-        entry.setQuantity(entry.getQuantity() - quantity);
-    }
-
-    /**
-     * Returns the value to the socket.
-     *
-     * @param entry
-     * @param value Value to be returned.
-     */
-    private void sendReport(Entry entry, String message) {
-        DataOutputStream os = null;
-        try {
-            os = new DataOutputStream(entry.getSocket().getOutputStream());
-            os.writeUTF(message);
-        } catch (IOException ex) {
-            Logger.getLogger(Agent.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
     
     private void log(String s) {
         System.out.println("[Agent] "+s);

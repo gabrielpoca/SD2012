@@ -5,17 +5,20 @@
 package stockexchange;
 
 import java.net.Socket;
+import java.util.ArrayList;
 
 class Entry {
 
     Socket socket;
     int value;
     int quantity;
+    ArrayList<Integer> log;
 
     public Entry(Socket sc, int value, int quantity) {
         this.socket = sc;
         this.value = value;
         this.quantity = quantity;
+        log = new ArrayList<Integer>();
     }
 
     public Entry(Socket socket) {
@@ -38,6 +41,11 @@ class Entry {
 
     public synchronized void setQuantity(int quantity) {
         this.quantity = quantity;
+    }
+    
+    public void subQuantity(int quantity) {
+        log.add(quantity);
+        this.quantity -= quantity;
     }
 
     public String toString() {
