@@ -67,6 +67,9 @@ public class StockExchangeClient {
             current = sin.readLine();
             if(current.equals("exit")) {
                 run = false;
+            } else if (current.equals("help")) {
+                System.out.println("\tCommands:\n\tbuy value quantity\n\tsell value quantity\n\tset id\n");
+                continue;
             }
             output_stream.writeUTF(current);
         }
