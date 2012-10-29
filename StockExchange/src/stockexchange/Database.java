@@ -5,6 +5,8 @@
 package stockexchange;
 
 import java.io.IOException;
+import java.net.Socket;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.TreeMap;
 import java.util.logging.Level;
@@ -15,10 +17,20 @@ public class Database {
 
     LinkedList<Entry> buyers_database;
     LinkedList<Entry> sellers_database;
+    HashMap<Long, ClientEntry> clients;
 
     public Database() {
         buyers_database = new LinkedList<Entry>();
         sellers_database = new LinkedList<Entry>();
+        clients = new HashMap<Long, ClientEntry>();
+    }
+    
+    public synchronized void addClient(ClientEntry entry) {
+        clients.put(entry.getID(), entry);
+    }
+    
+    public synchronized void updateClientSocket(long id, Socket socket) {
+        clients.get(id).setSocket(socket);
     }
 
     public synchronized void addBuyer(Entry entry) throws IOException {

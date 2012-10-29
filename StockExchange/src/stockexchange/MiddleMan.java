@@ -28,9 +28,12 @@ class MiddleMan extends Thread {
                 Entry seller = null;
                 int range = INFINIT;
                 for(Entry b : buyers) {
-                    if(b.getQuantity() == 0)
-                        continue;
                     for(Entry s : sellers) {
+                        // Lock entrys for process.
+                        b.lock();
+                        s.lock();
+                        if(b.getQuantity() == 0)
+                            continue;                        
                         if(s.getQuantity() == 0)
                             continue;
                         int temp_range = b.getValue() - s.getValue();
@@ -38,6 +41,10 @@ class MiddleMan extends Thread {
                             range = temp_range;
                             buyer = b;
                             seller = s;
+                        } else {
+                            // If no entry is going to be used unlock them
+                            b.unlock();
+                            s.unlock();
                         }
                     }
                 }
@@ -49,7 +56,10 @@ class MiddleMan extends Thread {
                     updateEntry(buyer, quantity);
                     updateEntry(seller, quantity);
                     sendReport(buyer, "Bought "+quantity+" at price "+buyer.getValue());
-                    sendReport(seller, "Sold "+quantity+" at preice "+seller.getValue());
+                    sendReport(seller, "Sold "+quantity+" at price "+seller.getValue());
+                    // Unlock entrys after update.
+                    buyer.unlock();
+                    seller.unlock();
                 }
             }
         }
@@ -63,6 +73,7 @@ class MiddleMan extends Thread {
      */
     private void updateEntry(Entry entry, int quantity) {
         entry.subQuantity(quantity);
+        log("Update "+entry.toString());
     }
 
     /**
@@ -83,5 +94,9 @@ class MiddleMan extends Thread {
 
     public void end() {
         run = false;
+    }
+    
+    private void log(String s) {
+        System.out.println(s);
     }
 }

@@ -6,31 +6,29 @@ package stockexchange;
 
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.concurrent.locks.ReentrantLock;
 
 class Entry {
 
-    Socket socket;
-    int value;
-    int quantity;
-    long id;
-    ArrayList<Integer> log;
+    private ClientEntry client;
+    private int value;
+    private int quantity;
+    
+    private ReentrantLock lock = new ReentrantLock();
 
-    public Entry(Socket sc, int value, int quantity, long id) {
-        this.socket = sc;
+    public Entry(int value, int quantity, ClientEntry client) {
         this.value = value;
         this.quantity = quantity;
-        this.id = id;
-        log = new ArrayList<Integer>();
+        this.client = client;
     }
 
-    public Entry(Socket socket) {
-        this.socket = socket;
+    public Entry() {
         value = 0;
         quantity = 0;
     }
 
     public Socket getSocket() {
-        return socket;
+        return client.getSocket();
     }
 
     public int getValue() {
@@ -41,16 +39,28 @@ class Entry {
         return quantity;
     }
 
-    public synchronized void setQuantity(int quantity) {
+    public void setQuantity(int quantity) {
+        this.lock();
         this.quantity = quantity;
+        this.unlock();
     }
     
-    public synchronized void subQuantity(int quantity) {
-        log.add(quantity);
+    public void subQuantity(int quantity) {
+        this.lock();
         this.quantity -= quantity;
+        this.unlock();
+    }
+    
+    public void lock() {
+        lock.lock();
+    }
+    
+    public void unlock() {
+        lock.unlock();
     }
 
+    @Override
     public String toString() {
-        return "Entry:: Socket=>" + socket + ", Value=>" + value + ", Quantity=>" + quantity;
+        return "Entry:: ID => "+client.getID()+" Value => "+ value + ", Quantity=>" + quantity;
     }
 }

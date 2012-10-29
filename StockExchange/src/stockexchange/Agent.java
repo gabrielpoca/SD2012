@@ -6,6 +6,7 @@ package stockexchange;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.logging.Level;
@@ -28,14 +29,25 @@ class Agent extends Thread {
 
     public void run() {
         try {
+            ClientEntry client = new ClientEntry(id, socket);
+            database.addClient(client);
             // open read/write strams
             DataInputStream is = new DataInputStream(socket.getInputStream());
             DataOutputStream os = new DataOutputStream(socket.getOutputStream());
+            os.writeUTF("Identification: "+id);
             boolean run = false;
             /* while client doesnt send exit. */
             while (!run) {
-                // read/parse action and parameters
-                String[] action = is.readUTF().split(" ");
+                String current = "";
+                try {
+                    // read action and parameters
+                     current = is.readUTF();                   
+                } catch (EOFException e) {
+                    log("Client closed");
+                    run = true;
+                    continue;
+                }
+                String[] action = current.split(" ");                
                 // if action is exit close the thread
                 if (action[0].equals("exit")) {
                     run = false;
@@ -43,12 +55,14 @@ class Agent extends Thread {
                 } else if (action[0].equals("set")) {
                     // users sets the id
                     id = Long.valueOf(action[1]);
+                    database.updateClientSocket(id, socket);
+                    continue;
                 }
                 log(action[0] + " " + action[1] + " " + action[2]);
                 int value = Integer.parseInt(action[1]);
                 int quantity = Integer.parseInt(action[2]);
                 // create record for action
-                Entry entry = new Entry(socket, value, quantity, id);
+                Entry entry = new Entry(value, quantity, client);
                 // perform action
                 if (action[0].equals(("buy"))) {
                     database.addBuyer(entry);
