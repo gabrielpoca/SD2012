@@ -30,10 +30,12 @@ class Server extends Thread {
             ServerSocket serverSocket = new ServerSocket(port);
             Socket socket = null;
             boolean run = true;
+            long id = 1;
             while (run) {
                 socket = serverSocket.accept();
-                Thread t = new Thread(new Agent(socket, database));
+                Thread t = new Thread(new Agent(socket, database, id));
                 t.start();
+                id++;
             }
         } catch (IOException ex) {
             Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);

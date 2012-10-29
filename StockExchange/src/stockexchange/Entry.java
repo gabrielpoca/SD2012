@@ -12,12 +12,14 @@ class Entry {
     Socket socket;
     int value;
     int quantity;
+    long id;
     ArrayList<Integer> log;
 
-    public Entry(Socket sc, int value, int quantity) {
+    public Entry(Socket sc, int value, int quantity, long id) {
         this.socket = sc;
         this.value = value;
         this.quantity = quantity;
+        this.id = id;
         log = new ArrayList<Integer>();
     }
 
@@ -43,7 +45,7 @@ class Entry {
         this.quantity = quantity;
     }
     
-    public void subQuantity(int quantity) {
+    public synchronized void subQuantity(int quantity) {
         log.add(quantity);
         this.quantity -= quantity;
     }

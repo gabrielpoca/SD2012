@@ -18,10 +18,12 @@ class Agent extends Thread {
 
     Socket socket;
     Database database;
+    Long id;
 
-    public Agent(Socket socket, Database database) {
+    public Agent(Socket socket, Database database, long id) {
         this.socket = socket;
         this.database = database;
+        this.id = id;
     }
 
     public void run() {
@@ -38,13 +40,15 @@ class Agent extends Thread {
                 if (action[0].equals("exit")) {
                     run = false;
                     continue;
+                } else if (action[0].equals("set")) {
+                    // users sets the id
+                    id = Long.valueOf(action[1]);
                 }
                 log(action[0] + " " + action[1] + " " + action[2]);
                 int value = Integer.parseInt(action[1]);
                 int quantity = Integer.parseInt(action[2]);
                 // create record for action
-                Entry entry = new Entry(socket, value, quantity);
-                Entry match_entry = null;
+                Entry entry = new Entry(socket, value, quantity, id);
                 // perform action
                 if (action[0].equals(("buy"))) {
                     database.addBuyer(entry);
