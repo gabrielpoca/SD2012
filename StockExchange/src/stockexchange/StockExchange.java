@@ -18,7 +18,7 @@ public class StockExchange {
         MiddleMan middleman = new MiddleMan(database);
         Thread thread_middleman = new Thread(middleman);
         thread_middleman.start();
-        
+        // Wait for end
         threadServer.join();
         thread_middleman.join();
     }
