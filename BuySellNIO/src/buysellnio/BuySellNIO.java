@@ -16,6 +16,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.sound.midi.SysexMessage;
+
+class ValidationException extends Exception {
+
+    public ValidationException(String msg) {
+	super(msg);
+	System.err.println(msg);
+    }
+}
 
 class User {
 
@@ -105,15 +114,18 @@ class Entry {
 	this.key = key;
     }
 
-    public void addTransactedQuantity(int quantity) {
+    public void addTransactedQuantity(int quantity) throws ValidationException {
 	this.transacted_quantity += quantity;
+	if (this.quantity < transacted_quantity) {
+	    throw new ValidationException("Entry exception! Transacted quantity bigger that avaliable quantity!");
+	}
     }
 
     public int addQuantity(int quantity) {
 	this.quantity += quantity;
 	return this.quantity;
     }
-    
+
     public int remainingQuantity() {
 	return quantity - transacted_quantity;
     }
@@ -130,12 +142,10 @@ public class BuySellNIO {
 	void write(SelectionKey key);
     }
     private InetAddress addr;
-    
     private Map<SocketChannel, List<byte[]>> dataMap;
     private HashMap<SocketChannel, Entry> buyersDatabase;
     private HashMap<SocketChannel, Entry> sellersDatabase;
     private int sum_want_to_buy, sum_bought, sum_want_to_sell, sum_sold;
-    
     private static final int BUY_PORT = 9999;
     private static final int SELL_PORT = 9998;
 
@@ -143,6 +153,7 @@ public class BuySellNIO {
 	dataMap = new HashMap<SocketChannel, List<byte[]>>();
 	buyersDatabase = new HashMap<SocketChannel, Entry>();
 	sellersDatabase = new HashMap<SocketChannel, Entry>();
+	sum_bought = sum_sold = sum_want_to_buy = sum_want_to_sell = 0;
     }
 
     class BuyerAccept implements Handler {
@@ -212,16 +223,19 @@ public class BuySellNIO {
 		    if (!setUsernameAndPassword(buyer, String.valueOf(buffer.asCharBuffer()))) {
 			buyer.setKey(key);
 			buyer.addQuantity(numReadBytes);
+			sum_want_to_buy += numReadBytes;
 			log("Got: " + numReadBytes + " bytes from buyer, updated to " + buyer.remainingQuantity() + ".");
 			seller = findEntryForTransaction(sellersDatabase);
 		    } else {
 			requestUsernameOrPassword(buyer, channel);
 		    }
 		    /* if there is a match for transaction perform it. */
-		   performTransaction(buyer, seller);
+		    performTransaction(buyer, seller);
 		}
 	    } catch (IOException ex) {
 		Logger.getLogger(BuySellNIO.class.getName()).log(Level.SEVERE, null, ex);
+	    } catch (ValidationException ex) {
+		System.err.println("Validation Error!");
 	    }
 	}
 
@@ -313,6 +327,7 @@ public class BuySellNIO {
 		    if (!setUsernameAndPassword(seller, String.valueOf(buffer.asCharBuffer()))) {
 			seller.setKey(key);
 			seller.addQuantity(numReadBytes);
+			sum_want_to_sell += numReadBytes;
 			log("Got: " + numReadBytes + " bytes from seller, updated to " + seller.remainingQuantity() + ".");
 			buyer = findEntryForTransaction(buyersDatabase);
 		    } else {
@@ -323,6 +338,8 @@ public class BuySellNIO {
 		}
 	    } catch (IOException ex) {
 		Logger.getLogger(BuySellNIO.class.getName()).log(Level.SEVERE, null, ex);
+	    } catch (ValidationException ex) {
+//		System.err.append("Validation Error!");
 	    }
 	}
 
@@ -425,20 +442,26 @@ public class BuySellNIO {
     }
 
     /**
-     * Perform the quantity transaction between two entrys. 
-     * First validates if neither is null. If not calls exchangeQuantity
-     * on both. Then puts the quantity each channel buffer and makes
-     * each key interestOPS to write.
+     * Perform the quantity transaction between two entrys. First validates if
+     * neither is null. If not calls exchangeQuantity on both. Then puts the
+     * quantity each channel buffer and makes each key interestOPS to write.
+     *
      * @param buyer
-     * @param seller 
+     * @param seller
      */
-    private void performTransaction(Entry buyer, Entry seller) {
+    private void performTransaction(Entry buyer, Entry seller) throws ValidationException {
 	int quantity = 0;
 	if (buyer != null && seller != null) {
 	    quantity = exchangeQuantity(buyer, seller);
+	    sum_bought += quantity;
+	    sum_sold += quantity;
+	    log("SOLD "+sum_sold+" BOUGHT "+sum_bought+" WSELL "+sum_want_to_sell+" WBUY "+sum_want_to_buy);
+	    if(sum_sold > Math.min(sum_want_to_sell, sum_want_to_buy) || sum_bought > Math.max(sum_want_to_buy, sum_want_to_sell)) {
+		throw new ValidationException("Sum validation error! Sould or bought more that max avaliable!");
+	    }
 	    /* if some quantity was traded output it to each channel. */
 	    if (quantity != 0) {
-		addToChannelBuffer(buyer.getSocket().getChannel(), ("Bought: " + quantity + " Remaining: "+buyer.remainingQuantity()).getBytes());
+		addToChannelBuffer(buyer.getSocket().getChannel(), ("Bought: " + quantity + " Remaining: " + buyer.remainingQuantity()).getBytes());
 		addToChannelBuffer(seller.getSocket().getChannel(), ("Sold " + quantity + " Remaining: " + seller.remainingQuantity()).getBytes());
 		seller.getKey().interestOps(SelectionKey.OP_WRITE);
 		buyer.getKey().interestOps(SelectionKey.OP_WRITE);
@@ -448,11 +471,12 @@ public class BuySellNIO {
 
     /**
      * Performs the quantity transaction between the buyer and the seller.
+     *
      * @param buyer
      * @param seller
      * @return Returns the traded quantity.
      */
-    private int exchangeQuantity(Entry buyer, Entry seller) {
+    private int exchangeQuantity(Entry buyer, Entry seller) throws ValidationException {
 	int quantity = buyer.remainingQuantity();
 	if (seller.remainingQuantity() < quantity) {
 	    quantity = seller.remainingQuantity();
