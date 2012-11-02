@@ -122,7 +122,6 @@ public class BuySellNIO {
 
 	void write(SelectionKey key);
     }
-    
     private InetAddress addr;
     private Map<SocketChannel, List<byte[]>> dataMap;
     private HashMap<SocketChannel, Entry> buyersDatabase;
@@ -206,21 +205,12 @@ public class BuySellNIO {
 			quantity = buyer.getQuantity() + numReadBytes;
 			buyer.setQuantity(quantity);
 			log("Got: " + numReadBytes + " bytes from buyer, updated to " + quantity + ".");
-			seller = findEntry(sellersDatabase);
+			seller = findEntryForTransaction(sellersDatabase);
 		    } else {
 			requestUsernameOrPassword(buyer, channel);
 		    }
 		    /* if there is a match for transaction perform it. */
-		    if (buyer != null && seller != null) {
-			quantity = entrysTransaction(buyer, seller);
-			/* if some quantity was traded output it to each channel. */
-			if (quantity != 0) {
-			    addToChannelBuffer(buyer.getSocket().getChannel(), ("" + quantity).getBytes());
-			    addToChannelBuffer(seller.getSocket().getChannel(), ("" + quantity).getBytes());
-			    seller.getKey().interestOps(SelectionKey.OP_WRITE);
-			    buyer.getKey().interestOps(SelectionKey.OP_WRITE);
-			}
-		    }
+		   performTransaction(buyer, seller);
 		}
 	    } catch (IOException ex) {
 		Logger.getLogger(BuySellNIO.class.getName()).log(Level.SEVERE, null, ex);
@@ -318,22 +308,12 @@ public class BuySellNIO {
 			quantity = seller.getQuantity() + numReadBytes;
 			seller.setQuantity(quantity);
 			log("Got: " + numReadBytes + " bytes from seller, updated to " + quantity + ".");
-			buyer = findEntry(buyersDatabase);
+			buyer = findEntryForTransaction(buyersDatabase);
 		    } else {
 			requestUsernameOrPassword(seller, channel);
 		    }
 		    /* if there is a match for transaction perform it. */
-		    if (buyer != null && seller != null) {
-			quantity = entrysTransaction(buyer, seller);
-			/* if some quantity was traded output it to each channel. */
-			if (quantity != 0) {
-			    addToChannelBuffer(buyer.getSocket().getChannel(), ("" + quantity).getBytes());
-			    addToChannelBuffer(seller.getSocket().getChannel(), ("" + quantity).getBytes());
-			    seller.getKey().interestOps(SelectionKey.OP_WRITE);
-			    buyer.getKey().interestOps(SelectionKey.OP_WRITE);
-			}
-		    }
-		    // set next action
+		    performTransaction(buyer, seller);
 		}
 	    } catch (IOException ex) {
 		Logger.getLogger(BuySellNIO.class.getName()).log(Level.SEVERE, null, ex);
@@ -439,14 +419,34 @@ public class BuySellNIO {
     }
 
     /**
-     * Performs the transaction between the buyer and the seller and returns the
-     * traded quantity.
-     *
+     * Perform the quantity transaction between two entrys. 
+     * First validates if neither is null. If not calls exchangeQuantity
+     * on both. Then puts the quantity each channel buffer and makes
+     * each key interestOPS to write.
+     * @param buyer
+     * @param seller 
+     */
+    private void performTransaction(Entry buyer, Entry seller) {
+	int quantity = 0;
+	if (buyer != null && seller != null) {
+	    quantity = exchangeQuantity(buyer, seller);
+	    /* if some quantity was traded output it to each channel. */
+	    if (quantity != 0) {
+		addToChannelBuffer(buyer.getSocket().getChannel(), ("" + quantity).getBytes());
+		addToChannelBuffer(seller.getSocket().getChannel(), ("" + quantity).getBytes());
+		seller.getKey().interestOps(SelectionKey.OP_WRITE);
+		buyer.getKey().interestOps(SelectionKey.OP_WRITE);
+	    }
+	}
+    }
+
+    /**
+     * Performs the quantity transaction between the buyer and the seller.
      * @param buyer
      * @param seller
-     * @return The traded quantity.
+     * @return Returns the traded quantity.
      */
-    private int entrysTransaction(Entry buyer, Entry seller) {
+    private int exchangeQuantity(Entry buyer, Entry seller) {
 	int quantity = buyer.getQuantity();
 	if (seller.getQuantity() < quantity) {
 	    quantity = seller.getQuantity();
@@ -462,7 +462,7 @@ public class BuySellNIO {
      * @param database Database to selec.
      * @return Selected entry.
      */
-    private Entry findEntry(HashMap<SocketChannel, Entry> database) {
+    private Entry findEntryForTransaction(HashMap<SocketChannel, Entry> database) {
 	Entry entry = null;
 	if (!database.isEmpty()) {
 	    for (Entry e : database.values()) {
