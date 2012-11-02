@@ -60,21 +60,25 @@ class Entry {
 
     User user;
     int quantity;
+    int transacted_quantity;
     SelectionKey key;
 
     public Entry(Socket sc, int quantity, SelectionKey key) {
 	this.user = new User(sc);
 	this.quantity = quantity;
 	this.key = key;
+	transacted_quantity = 0;
     }
 
     public Entry(Socket socket, SelectionKey key) {
 	this.user = new User(socket);
 	this.key = key;
+	transacted_quantity = 0;
     }
 
     public Entry(Socket socket) {
 	this.user = new User(socket);
+	transacted_quantity = 0;
     }
 
     public Socket getSocket() {
@@ -101,14 +105,17 @@ class Entry {
 	this.key = key;
     }
 
-    public int subQuantity(int quantity) {
-	this.quantity -= quantity;
-	return this.quantity;
+    public void addTransactedQuantity(int quantity) {
+	this.transacted_quantity += quantity;
     }
 
     public int addQuantity(int quantity) {
 	this.quantity += quantity;
 	return this.quantity;
+    }
+    
+    public int remainingQuantity() {
+	return quantity - transacted_quantity;
     }
 }
 
@@ -123,9 +130,12 @@ public class BuySellNIO {
 	void write(SelectionKey key);
     }
     private InetAddress addr;
+    
     private Map<SocketChannel, List<byte[]>> dataMap;
     private HashMap<SocketChannel, Entry> buyersDatabase;
     private HashMap<SocketChannel, Entry> sellersDatabase;
+    private int sum_want_to_buy, sum_bought, sum_want_to_sell, sum_sold;
+    
     private static final int BUY_PORT = 9999;
     private static final int SELL_PORT = 9998;
 
@@ -193,7 +203,6 @@ public class BuySellNIO {
 		    channel.close();
 		    key.cancel();
 		} else {
-		    int quantity = 0;
 		    Entry seller = null;
 		    Entry buyer = null;
 		    buffer.flip();
@@ -202,9 +211,8 @@ public class BuySellNIO {
 		    // if username and password are not set read them
 		    if (!setUsernameAndPassword(buyer, String.valueOf(buffer.asCharBuffer()))) {
 			buyer.setKey(key);
-			quantity = buyer.getQuantity() + numReadBytes;
-			buyer.setQuantity(quantity);
-			log("Got: " + numReadBytes + " bytes from buyer, updated to " + quantity + ".");
+			buyer.addQuantity(numReadBytes);
+			log("Got: " + numReadBytes + " bytes from buyer, updated to " + buyer.remainingQuantity() + ".");
 			seller = findEntryForTransaction(sellersDatabase);
 		    } else {
 			requestUsernameOrPassword(buyer, channel);
@@ -296,7 +304,6 @@ public class BuySellNIO {
 		    channel.close();
 		    key.cancel();
 		} else {
-		    int quantity = 0;
 		    Entry seller = null;
 		    Entry buyer = null;
 		    buffer.flip();
@@ -305,9 +312,8 @@ public class BuySellNIO {
 		    // if username and password are not set read them
 		    if (!setUsernameAndPassword(seller, String.valueOf(buffer.asCharBuffer()))) {
 			seller.setKey(key);
-			quantity = seller.getQuantity() + numReadBytes;
-			seller.setQuantity(quantity);
-			log("Got: " + numReadBytes + " bytes from seller, updated to " + quantity + ".");
+			seller.addQuantity(numReadBytes);
+			log("Got: " + numReadBytes + " bytes from seller, updated to " + seller.remainingQuantity() + ".");
 			buyer = findEntryForTransaction(buyersDatabase);
 		    } else {
 			requestUsernameOrPassword(seller, channel);
@@ -432,8 +438,8 @@ public class BuySellNIO {
 	    quantity = exchangeQuantity(buyer, seller);
 	    /* if some quantity was traded output it to each channel. */
 	    if (quantity != 0) {
-		addToChannelBuffer(buyer.getSocket().getChannel(), ("" + quantity).getBytes());
-		addToChannelBuffer(seller.getSocket().getChannel(), ("" + quantity).getBytes());
+		addToChannelBuffer(buyer.getSocket().getChannel(), ("Bought: " + quantity + " Remaining: "+buyer.remainingQuantity()).getBytes());
+		addToChannelBuffer(seller.getSocket().getChannel(), ("Sold " + quantity + " Remaining: " + seller.remainingQuantity()).getBytes());
 		seller.getKey().interestOps(SelectionKey.OP_WRITE);
 		buyer.getKey().interestOps(SelectionKey.OP_WRITE);
 	    }
@@ -447,12 +453,12 @@ public class BuySellNIO {
      * @return Returns the traded quantity.
      */
     private int exchangeQuantity(Entry buyer, Entry seller) {
-	int quantity = buyer.getQuantity();
-	if (seller.getQuantity() < quantity) {
-	    quantity = seller.getQuantity();
+	int quantity = buyer.remainingQuantity();
+	if (seller.remainingQuantity() < quantity) {
+	    quantity = seller.remainingQuantity();
 	}
-	buyer.subQuantity(quantity);
-	seller.subQuantity(quantity);
+	buyer.addTransactedQuantity(quantity);
+	seller.addTransactedQuantity(quantity);
 	return quantity;
     }
 
