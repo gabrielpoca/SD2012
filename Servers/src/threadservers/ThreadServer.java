@@ -11,6 +11,7 @@ public class ThreadServer extends Thread {
     /* Port it listens to. */
     int read_port;
     Agent agent;
+    boolean run = true;
 
     public ThreadServer(int read_port, Agent agent) {
         this.read_port = read_port;
@@ -22,7 +23,6 @@ public class ThreadServer extends Thread {
 	    log("Starting on port " + read_port);
 	    ServerSocket serverSocket = new ServerSocket(read_port);
 	    Socket socket = null;
-	    boolean run = true;
 	    long id = 1;
 	    while (run) {
 		socket = serverSocket.accept();
@@ -38,7 +38,11 @@ public class ThreadServer extends Thread {
 	}
     }
     
-    public static void log(String s) {
+    public void end() {
+	run = false;
+    }
+    
+    public void log(String s) {
         System.out.println("[ThreadServer] "+s);
     }
 }
