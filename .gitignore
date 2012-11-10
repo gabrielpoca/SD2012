@@ -7,3 +7,6 @@
 /StockExchangeClient/dist/
 /StockExchangeClient/.idea/
 *.class
+/Servers/nbproject/private/
+/Servers/build/
+/Servers/dist/
