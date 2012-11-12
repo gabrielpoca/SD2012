@@ -1,3 +1,5 @@
+package niopeer;
+
 import java.util.LinkedList;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -18,7 +20,10 @@ public class Lock {
 	 * @return Returns true if has waiters and false if not.
 	 */
 	public boolean hasWaiters() {
-		return (waiters.size() >= 1);
+		if(waiters.size() >= 1)
+		    return true;
+		else
+		    return false;
 	}
 
 	/**
@@ -53,7 +58,8 @@ public class Lock {
 		lock.lock();
 		boolean res = false;
 		if (waiters.size() >= 1) {
-			waiters.getFirst().lock();
+		    Handler h = waiters.removeFirst();
+		    h.lock();
 		} else {
 			res = true;
 		}

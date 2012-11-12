@@ -12,3 +12,8 @@
 /Servers/dist/
 /NIOPeer/nbproject/private/
 /DumpIT/nbproject/private/
+/DumpIT/build/
+/DumpIT/dist/
+/NIOPeer/build/
+/NIOPeer/dist/
+/SOMETHING/nbproject/private/
