@@ -264,7 +264,7 @@ public class BuySellNIO {
 	    try {
 		ServerSocketChannel serverChannel = (ServerSocketChannel) key.channel();
 		SocketChannel channel = serverChannel.accept();
-		channel.configureBlocking(false);
+		channel.configureBlocking(false);	
 		Socket socket = channel.socket();
 		// register channel buffer
 		dataMap.put(channel, new ArrayList<byte[]>());
