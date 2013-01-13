@@ -15,7 +15,7 @@ public class ToyClient {
     public static void main(String args[]) {
 	try {
 	    Registry registry = LocateRegistry.getRegistry();
-	    ToyInterface server = (ToyInterface) registry.lookup("ToyServer");
+	    ToyInterface server = (ToyInterface) registry.lookup("/localhost/database");
 	    HardInterface hard = server.getHard("My Hard Name");
 	    SoftInterface soft = server.getSoft("My Soft Name");
 	    
