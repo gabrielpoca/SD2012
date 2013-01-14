@@ -22,3 +22,12 @@
 /ToyServer/dist/
 /ToyServer/build/
 .DS_Store
+/EEDemo/nbproject/private/
+/EEDemo/EEDemo-war/nbproject/private/
+/EEDemo/EEDemo-ejb/nbproject/private/
+/EEDemo/EEDemo-war/build/
+/EEDemo/EEDemo-ejb/dist/
+/EEDemo/EEDemo-ejb/build/
+/Bookstore/nbproject/private/
+/Rabbit/nbproject/private/
+/Bookstore/build/
