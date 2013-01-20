@@ -8,6 +8,7 @@ import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.derby.jdbc.EmbeddedDataSource;
@@ -37,17 +38,19 @@ public class Bookstore extends UnicastRemoteObject implements BookstoreInterface
 	    // create if doesn't exist
 	    data_source.setCreateDatabase("create");
 
-	    Statement statement = data_source.getConnection().createStatement();
+	    Connection connection = data_source.getConnection();
+	    Statement statement = connection.createStatement();
 
 	    try {
-		statement.executeUpdate("DROP TABLE books");
+		statement.executeUpdate("DROP TABLE "+DATABASE_NAME);
 	    } catch (SQLException e) {
 		System.out.println("Table doesn't exist!");
 	    }
-	    statement.executeUpdate("CREATE TABLE books (isbn INT, title VARCHAR(150), stock INT)");
-	    statement.executeUpdate("insert into books values (1, 'Primeiro Livro', 3), (2, 'Segundo Livro', 2), (3, 'Terceiro Livro', 1)");
+	    statement.executeUpdate("CREATE TABLE "+DATABASE_NAME+" (isbn INT, title VARCHAR(150), stock INT)");
+	    statement.executeUpdate("insert into "+DATABASE_NAME+" values (1, 'Primeiro Livro', 3), (2, 'Segundo Livro', 2), (3, 'Terceiro Livro', 1)");
 
 	    statement.close();
+	    connection.close();
 
 	    Naming.rebind("//localhost/bookstore", new Bookstore());
 

@@ -19,6 +19,9 @@ import javax.transaction.xa.XAResource;
 import org.apache.derby.jdbc.EmbeddedDataSource;
 import tx.XidImpl;
 
+import static bookstore.Bookstore.DATABASE_NAME;
+
+
 /**
  *
  * @author gabriel
@@ -54,7 +57,7 @@ public class Book extends TxObject implements BookInterface {
 	    Connection connection = xaconnection.getConnection();
 	    Statement statement = connection.createStatement();
 	    
-	    ResultSet result = statement.executeQuery("select * from books where isbn = "+isbn);
+	    ResultSet result = statement.executeQuery("select * from "+DATABASE_NAME+" where isbn = "+isbn);
 	    result.next();
 	    stock = result.getInt(1);
 	    
@@ -77,7 +80,7 @@ public class Book extends TxObject implements BookInterface {
 	    Connection connection = data_source.getConnection();
 	    Statement statement = connection.createStatement();
 	    
-	    statement.executeQuery("update books set sotck = stock - 1 where isbn = "+isbn);
+	    statement.executeQuery("update "+DATABASE_NAME+" set stock = stock - 1 where isbn = "+isbn);
 	    statement.close();
 	    connection.close();
 	    

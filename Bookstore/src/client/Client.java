@@ -34,9 +34,17 @@ public class Client {
 	    
 	    int xid = monitor.begin();
 	    
-	    BookInterface book =  bookstore.find(1);
+	    System.out.println(bookstore.find(1).getStock(xid));
 	    
-	    System.out.println(book.getStock(xid));
+	    cart.add(bookstore.find(1), xid);
+	    cart.add(bookstore.find(2), xid);
+	    
+	    if(cart.buy(xid))
+		System.out.println("Bought!");
+	    else
+		System.out.println("Havent bought!");
+	    
+	    monitor.commit(xid);
 	} catch (Exception ex) {
 	    ex.printStackTrace();
 	}
