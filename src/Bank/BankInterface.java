@@ -1,7 +1,7 @@
-package Bank;
+package bank;
 
 public interface BankInterface {
     public int balance();
-    public boolean deposit();
-    public boolean withdraw();
+    public boolean deposit(int amount);
+    public boolean withdraw(int amount);
 }
